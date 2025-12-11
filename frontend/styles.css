@@ -1,0 +1,45 @@
+:root{
+  --bg:#0f1724; /* dark navy */
+  --card:#0b1220;
+  --muted:#9aa4b2;
+  --accent:#3b82f6;
+  --light:#e6eef8;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  background:linear-gradient(180deg,#071024 0%, #0a1530 100%);
+  color:var(--light);
+  display:flex;
+  align-items:flex-start;
+  justify-content:center;
+  padding:32px;
+}
+.container{
+  width:900px;
+  max-width:95%;
+}
+header h1{margin:0;font-size:20px}
+.subtitle{margin:6px 0 18px;color:var(--muted)}
+.uploader{background:var(--card);padding:16px;border-radius:8px;margin-bottom:14px}
+.file-drop{border:2px dashed rgba(255,255,255,0.06);padding:18px;border-radius:8px;display:flex;align-items:center;gap:12px}
+.file-drop input[type=file]{position:absolute;opacity:0;width:100%;height:100%;cursor:pointer}
+#fileInfo{color:var(--muted)}
+.controls{display:flex;align-items:center;gap:12px;margin-top:10px}
+button{background:var(--accent);border:0;color:white;padding:8px 12px;border-radius:6px;cursor:pointer}
+button[disabled]{opacity:0.5;cursor:not-allowed}
+.chat{background:var(--card);padding:12px;border-radius:8px;min-height:360px;display:flex;flex-direction:column}
+.messages{flex:1;overflow:auto;padding:8px;display:flex;flex-direction:column;gap:8px}
+.message{max-width:78%;padding:10px;border-radius:8px}
+.message.user{background:rgba(59,130,246,0.14);align-self:flex-end;color:var(--light)}
+.message.assistant{background:rgba(255,255,255,0.03);align-self:flex-start;color:var(--light)}
+.composer{display:flex;gap:8px;margin-top:10px}
+.composer input{flex:1;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--light)}
+.muted{color:var(--muted);font-size:13px}
+footer{margin-top:10px;color:var(--muted)}
+
+@media (max-width:640px){
+  .container{padding:0}
+}

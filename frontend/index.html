@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>RAG PDF Chat</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>RAG PDF Chat</h1>
+      <p class="subtitle">Select a PDF, upload it, then ask questions about the document.</p>
+    </header>
+
+    <section class="uploader">
+      <div id="fileDrop" class="file-drop">
+        <input id="pdfInput" type="file" accept="application/pdf" />
+        <div id="fileInfo">Drop or select a PDF file</div>
+      </div>
+      <div class="controls">
+        <button id="uploadBtn" disabled>Upload PDF</button>
+        <div id="uploadStatus" class="muted"></div>
+      </div>
+    </section>
+
+    <section class="chat">
+      <div id="messages" class="messages"></div>
+
+      <div class="composer">
+        <input id="questionInput" type="text" placeholder="Ask about the uploaded PDF..." />
+        <button id="sendBtn" disabled>Send</button>
+      </div>
+    </section>
+
+    <footer>
+      <small>Backend endpoints expected: POST <code>/upload_pdf</code> and POST <code>/chat</code>.</small>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
