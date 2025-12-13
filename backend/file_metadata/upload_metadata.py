@@ -13,17 +13,36 @@ from sqlalchemy.exc import SQLAlchemyError
 class UploadMetadata:
     """Encapsulates creation and insertion of file metadata records into the `uploads` table.
 
-    Accepts either a SQLAlchemy Engine instance or a database URL string.
+    Construction options:
+    - pass a SQLAlchemy Engine instance
+    - pass a database URL string
+    - pass a `secret_arn` plus a `secrets_manager` instance (which must implement `get_rds_credentials(secret_arn)`)
     """
 
-    def __init__(self, database_engine):
-        # Accept either an engine or a database URL string
+    def __init__(self, database_engine=None, secret_arn: str = None, secrets_manager=None):
+        # Accept either an engine, a database URL string, or a secret ARN + secrets manager
         from sqlalchemy import create_engine
 
-        if isinstance(database_engine, str):
-            self.engine = create_engine(database_engine)
+        if database_engine:
+            if isinstance(database_engine, str):
+                self.engine = create_engine(database_engine)
+            else:
+                self.engine = database_engine
+        elif secret_arn and secrets_manager is not None:
+            # secrets_manager must provide get_rds_credentials(secret_arn) -> dict
+            creds = secrets_manager.get_rds_credentials(secret_arn)
+            user = creds['username']
+            pwd = creds['password']
+            host = creds['host']
+            port = creds.get('port', '5432')
+            dbname = creds['dbname']
+            from urllib.parse import quote_plus
+
+            enc = quote_plus(pwd)
+            url = f"postgresql+psycopg2://{user}:{enc}@{host}:{port}/{dbname}?sslmode=require"
+            self.engine = create_engine(url)
         else:
-            self.engine = database_engine
+            raise ValueError('UploadMetadata requires database_engine or (secret_arn and secrets_manager)')
 
         self.metadata = MetaData()
 

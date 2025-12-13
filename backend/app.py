@@ -13,7 +13,7 @@ from file_metadata.upload_metadata import UploadMetadata
 from utils.storage import S3Storage
 from dotenv import load_dotenv
 from urllib.parse import quote_plus
-import json
+from utils.secret_manager import get_rds_credentials, SecretsManager
 
 load_dotenv()
 
@@ -36,30 +36,19 @@ if not DATABASE_URL:
     if not RDS_SECRET_ARN:
         raise RuntimeError('DATABASE_URL not set and no RDS_SECRET_ARN / RDS_SECRET_NAME provided')
     try:
-        sm = boto3.client('secretsmanager', region_name=AWS_REGION)
-        resp = sm.get_secret_value(SecretId=RDS_SECRET_ARN)
-        secret_string = resp.get('SecretString')
-        if not secret_string:
-            raise RuntimeError('secret has no SecretString')
-        secret = json.loads(secret_string)
-        db_user = secret.get('username') or secret.get('user')
-        db_pass = secret.get('password')
-        db_host = secret.get('host')
-        db_port = secret.get('port') or '5432'
-        db_name = secret.get('dbname') or secret.get('database') or secret.get('db')
-        if not all([db_user, db_pass, db_host, db_name]):
-            raise RuntimeError('secret missing username/password/host/dbname')
-        enc_pass = quote_plus(db_pass)
-        DATABASE_URL = f"postgresql+psycopg2://{db_user}:{enc_pass}@{db_host}:{db_port}/{db_name}?sslmode=require"
+        # Use SecretsManager wrapper to fetch credentials when DATABASE_URL missing
+        sm = SecretsManager(region_name=AWS_REGION)
+        # Defer to UploadMetadata to build engine from secret (DI)
+        file_metadata = UploadMetadata(secret_arn=RDS_SECRET_ARN, secrets_manager=sm)
     except Exception as e:
-        raise RuntimeError(f'failed to load DB credentials from Secrets Manager: {e}')
-
-# Initialize file-metadata handler for uploads table (pass engine)
-# try:
-#     engine = create_engine(DATABASE_URL)
-#     file_metadata = UploadMetadata(engine)
-# except Exception as e:
-#     raise RuntimeError(f'failed to initialize UploadMetadata: {e}')
+        raise RuntimeError(f'failed to initialize UploadMetadata from Secrets Manager: {e}')
+else:
+    # If DATABASE_URL provided, initialize normally
+    try:
+        engine = create_engine(DATABASE_URL)
+        file_metadata = UploadMetadata(engine)
+    except Exception as e:
+        raise RuntimeError(f'failed to initialize UploadMetadata: {e}')
 
 
 @app.route('/upload_pdf', methods=['POST', 'OPTIONS'])
@@ -97,7 +86,7 @@ def upload_pdf():
 
     # Persist file metadata to RDS
     try:
-        record_id = UploadMetadata.insert_upload(filename=filename, username=username, file_format=fmt, s3_url=s3_url)
+        record_id = file_metadata.insert_upload(filename=filename, username=username, file_format=fmt, s3_url=s3_url)
     except SQLAlchemyError as e:
         return jsonify({'error': 'db insert failed', 'details': str(e)}), 500
 
