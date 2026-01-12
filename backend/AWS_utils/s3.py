@@ -20,3 +20,15 @@ class S3Client:
         if not self.region or self.region == 'us-east-1':
             return f"https://{self.bucket}.s3.amazonaws.com/{object_key}"
         return f"https://{self.bucket}.s3.{self.region}.amazonaws.com/{object_key}"
+
+    def get_object_bytes(self, object_key: str) -> bytes:
+        if not self.bucket:
+            raise RuntimeError('S3 bucket not configured')
+        try:
+            resp = self.client.get_object(Bucket=self.bucket, Key=object_key)
+        except (BotoCoreError, ClientError) as exc:
+            raise RuntimeError(f'failed to download {object_key} from S3: {exc}')
+        body = resp.get('Body')
+        if body is None:
+            raise RuntimeError('S3 object response missing body stream')
+        return body.read()
