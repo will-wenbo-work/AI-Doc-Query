@@ -2,6 +2,9 @@ Flask>=2.0
 flask-cors
 boto3
 botocore
+langchain>=0.2
+langchain-aws
+langchain-experimental
 opensearch-py
 pypdf
 requests-aws4auth

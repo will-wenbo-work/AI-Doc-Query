@@ -3,8 +3,8 @@
 This module finds documents that have been uploaded to S3 but have not yet been chunked/embedded. For each pending document it:
 
 1. Pulls the PDF bytes directly from S3.
-2. Extracts text and performs semantic-style chunking with overlap.
-3. Generates embeddings with Amazon Bedrock (default `amazon.titan-embed-text-v1`).
+2. Extracts text and feeds it through LangChain's `SemanticChunker` for semantic boundaries with automatic overlap.
+3. Generates embeddings via LangChain's `BedrockEmbeddings` wrapper (default `amazon.titan-embed-text-v1`).
 4. Stores the vectors and metadata in an Amazon OpenSearch (vector) index.
 5. Updates the `uploads` table to reflect `is_chunked`/`is_embedded` along with the embedding model and index name.
 
