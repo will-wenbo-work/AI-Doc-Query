@@ -1,38 +1,43 @@
-# Backend - Upload API
+# Backend API
 
-This backend exposes a single endpoint used by the frontend:
+This service handles uploads and retrieval for the AI Doc Query stack.
 
-- `POST /upload_pdf` — accepts multipart form-data with `file` and optional `username`. Uploads the received file to S3 and stores a metadata record in the configured RDS database.
+## Endpoints
 
-Environment variables (required):
+- `POST /api/upload` — Accepts multipart form-data with `file` (PDF) and optional `uploader_id` / `uploader_name`. Files are uploaded to S3 and a metadata row is stored in Postgres.
+- `POST /api/chat/search` — Accepts JSON `{ "query": "...", "top_k": 5 }`. The query is embedded via Amazon Bedrock (LangChain) and searched against the OpenSearch vector index. Returns matching chunks plus metadata useful for grounding answers.
 
-- `S3_BUCKET` — target S3 bucket name
-- `AWS_REGION` — AWS region (default `us-east-1`)
-- `AWS_ACCESS_KEY_ID` — AWS access key id (optional if using instance role)
-- `AWS_SECRET_ACCESS_KEY` — AWS secret access key (optional if using instance role)
-- `DATABASE_URL` — SQLAlchemy-compatible database URI, e.g. `postgresql+psycopg2://user:pass@host:5432/dbname`
+## Required environment variables
 
-Install dependencies
+| Name | Description |
+| --- | --- |
+| `AWS_REGION` | AWS region for S3, Bedrock, and OpenSearch (default `us-east-1`). |
+| `S3_BUCKET` | Bucket where uploaded PDFs are stored. |
+| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | Optional if running on an IAM role with the required permissions. |
+| `UPLOADS_DB_DSN` **or** (`DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_NAME`, `DB_PORT`) | Connection info for the PostgreSQL `uploads` table. |
+| `OPENSEARCH_HOST` | OpenSearch / AOSS endpoint (no protocol). Required for chat/search. |
+| `OPENSEARCH_INDEX` | Name of the knn-enabled index (default `doc-embeddings`). |
+| `OPENSEARCH_SERVICE` | SigV4 service identifier (`aoss` for serverless, `es` for provisioned domains). |
+| `BEDROCK_EMBEDDING_MODEL_ID` | Embedding model used for both ingestion and search (default `amazon.titan-embed-text-v1`). |
+| `BEDROCK_LLM_MODEL_ID` | Bedrock chat/completion model for answer generation (default `anthropic.claude-3-sonnet-20240229-v1:0`). |
+| `BEDROCK_LLM_TEMPERATURE` | Optional decoding temperature for the chat model (default `0`). |
+| `EMBEDDING_DIMENSION` | Expected vector length inside OpenSearch (default `1536`). |
+| `PORT` | Flask port (default `8000`). |
+
+## Local development
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r backend/requirements.txt
-```
 
-Run locally (development)
-
-```bash
-# from repo root
+export AWS_REGION=us-west-2
 export S3_BUCKET=your-bucket
-export DATABASE_URL='postgresql+psycopg2://user:pass@host:5432/db'
-# (optional) set AWS keys
-# export AWS_ACCESS_KEY_ID=...
-# export AWS_SECRET_ACCESS_KEY=...
+export UPLOADS_DB_DSN='postgresql://user:pass@db-host:5432/dbname'
+export OPENSEARCH_HOST='domain.us-west-2.aoss.amazonaws.com'
+export OPENSEARCH_INDEX='doc-embeddings'
+# optional: BEDROCK_EMBEDDING_MODEL_ID, OPENSEARCH_SERVICE, PORT, AWS keys
 python3 backend/app.py
 ```
 
-Notes
-
-- The code will create a table named `uploads` if it does not already exist. Columns: `id`, `filename`, `upload_time`, `username`, `file_format`, `s3_url`.
-- The S3 object URL stored is the public S3 URL pattern. If your bucket is private, you should generate presigned URLs when needed.
+The RAG ingestion pipeline (`backend/RAG_pipeline/chucker.py`) reads from the same Postgres table, chunks PDFs, creates embeddings, and pushes them into OpenSearch. `/api/chat/search` relies on that index to retrieve relevant chunks for user questions.
